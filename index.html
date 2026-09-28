@@ -198,5 +198,70 @@ window.supabaseClient.auth.onAuthStateChange(() => {
 });
 
 updateAuthState();
+    const profileForm = document.getElementById('profileForm');
+
+async function loadResearcherProfile() {
+  const { data: sessionData } = await window.supabaseClient.auth.getSession();
+  const user = sessionData.session?.user;
+
+  if (!user || !profileForm) return;
+
+  const { data, error } = await window.supabaseClient
+    .from('profiles')
+    .select('full_name, affiliation, bio, research_interests, website_url')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Profile load error:', error);
+    return;
+  }
+
+  if (data) {
+    document.getElementById('profileFullName').value = data.full_name || '';
+    document.getElementById('profileAffiliation').value = data.affiliation || '';
+    document.getElementById('profileBio').value = data.bio || '';
+    document.getElementById('profileInterests').value = data.research_interests || '';
+    document.getElementById('profileWebsite').value = data.website_url || '';
+  }
+}
+
+if (profileForm) {
+  profileForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const { data: sessionData } = await window.supabaseClient.auth.getSession();
+    const user = sessionData.session?.user;
+    const message = document.getElementById('profileMessage');
+
+    if (!user) {
+      message.textContent = 'Please sign in before saving your profile.';
+      return;
+    }
+
+    const profile = {
+      id: user.id,
+      full_name: document.getElementById('profileFullName').value.trim(),
+      affiliation: document.getElementById('profileAffiliation').value.trim(),
+      bio: document.getElementById('profileBio').value.trim(),
+      research_interests: document.getElementById('profileInterests').value.trim(),
+      website_url: document.getElementById('profileWebsite').value.trim()
+    };
+
+    const { error } = await window.supabaseClient
+      .from('profiles')
+      .upsert(profile, { onConflict: 'id' });
+
+    if (error) {
+      console.error('Profile save error:', error);
+      message.textContent = 'Unable to save profile: ' + error.message;
+      return;
+    }
+
+    message.textContent = 'Your researcher profile has been saved successfully.';
+  });
+
+  loadResearcherProfile();
+}
 </script>
 </body></html> 
