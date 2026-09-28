@@ -52,4 +52,148 @@ window.supabaseClient = window.supabase.createClient(
 
 console.log("Global Inquiry Forum connected to Supabase");
 </script>
-</body></html>
+  <script>
+const authBox = document.createElement('div');
+
+authBox.style.cssText = `
+margin-top:26px;
+padding:26px;
+border:1px solid var(--line);
+background:var(--surface);
+`;
+
+authBox.innerHTML = `
+<div class="kicker">Researcher account</div>
+<h3 style="font-size:25px;margin:0 0 8px">Sign in or create your account</h3>
+<p style="color:var(--muted);max-width:720px">
+Create a researcher profile to manage your submissions and future publications.
+</p>
+
+<div style="display:grid;gap:10px;max-width:520px">
+<input id="authName" placeholder="Full name"
+style="padding:13px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:14px Arial">
+
+<input id="authEmail" type="email" placeholder="Email address"
+style="padding:13px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:14px Arial">
+
+<input id="authPassword" type="password" placeholder="Password"
+style="padding:13px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:14px Arial">
+
+<div style="display:flex;gap:10px;flex-wrap:wrap">
+<button id="signupBtn" class="btn primary" type="button">Create account</button>
+<button id="loginBtn" class="btn" type="button">Log in</button>
+<button id="logoutBtn" class="btn" type="button" style="display:none">Log out</button>
+</div>
+
+<p id="authMessage" style="font:13px Arial;color:var(--muted);margin:8px 0 0"></p>
+`;
+
+const portalSection = document.querySelector('#portal .policy');
+
+if (portalSection) {
+  portalSection.parentNode.insertBefore(authBox, portalSection);
+}
+
+async function syncResearcherProfile(user) {
+  if (!user) return;
+
+  const fullName =
+    user.user_metadata?.full_name ||
+    user.email?.split('@')[0] ||
+    'Researcher';
+
+  const { error } = await window.supabaseClient
+    .from('profiles')
+    .upsert({
+      id: user.id,
+      full_name: fullName
+    });
+
+  if (error) console.error('Profile sync error:', error);
+}
+
+async function updateAuthState() {
+  const { data } = await window.supabaseClient.auth.getSession();
+  const user = data.session?.user;
+
+  const nameInput = document.getElementById('authName');
+  const emailInput = document.getElementById('authEmail');
+  const passwordInput = document.getElementById('authPassword');
+  const signupBtn = document.getElementById('signupBtn');
+  const loginBtn = document.getElementById('loginBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const message = document.getElementById('authMessage');
+
+  if (user) {
+    await syncResearcherProfile(user);
+    nameInput.style.display = 'none';
+    passwordInput.style.display = 'none';
+    signupBtn.style.display = 'none';
+    loginBtn.style.display = 'none';
+    logoutBtn.style.display = 'inline-block';
+    emailInput.value = user.email || '';
+    message.textContent = 'You are signed in as ' + (user.email || 'researcher') + '.';
+  } else {
+    nameInput.style.display = 'block';
+    passwordInput.style.display = 'block';
+    signupBtn.style.display = 'inline-block';
+    loginBtn.style.display = 'inline-block';
+    logoutBtn.style.display = 'none';
+  }
+}
+
+document.getElementById('signupBtn').addEventListener('click', async () => {
+  const name = document.getElementById('authName').value.trim();
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const message = document.getElementById('authMessage');
+
+  if (!name || !email || !password) {
+    message.textContent = 'Please complete all fields.';
+    return;
+  }
+
+  const { error } = await window.supabaseClient.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { full_name: name },
+      emailRedirectTo: window.location.origin
+    }
+  });
+
+  message.textContent = error
+    ? error.message
+    : 'Account created. Please check your email to confirm your address.';
+});
+
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const message = document.getElementById('authMessage');
+
+  const { error } = await window.supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  message.textContent = error
+    ? error.message
+    : 'Signed in successfully.';
+
+  await updateAuthState();
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await window.supabaseClient.auth.signOut();
+  document.getElementById('authMessage').textContent = 'You have been signed out.';
+  await updateAuthState();
+});
+
+window.supabaseClient.auth.onAuthStateChange(() => {
+  updateAuthState();
+});
+
+updateAuthState();
+</script>
+</body></html> 
