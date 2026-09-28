@@ -1,0 +1,11 @@
+-- Global Inquiry Forum — editorial/admin policy placeholder
+--
+-- IMPORTANT:
+-- Do not enable broad admin access until Supabase Auth roles and
+-- server-side authorization are configured.
+--
+-- Recommended next stage:
+-- 1. Create an app_metadata role such as 'admin' or 'editor'.
+-- 2. Use auth.jwt() to check that role in RLS policies.
+-- 3. Keep editorial_notes, reviews and integrity_records private.
+-- 4. Never expose service_role keys in browser JavaScript.
